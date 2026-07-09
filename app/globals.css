@@ -636,63 +636,75 @@ textarea {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.company-add-strip {
-  display: grid;
-  justify-items: end;
-  margin: -6px 0 14px;
+.modal-anchor {
+  scroll-margin-top: 20px;
 }
 
-.add-company-drawer {
-  display: grid;
-  justify-items: end;
-  width: 100%;
-}
-
-.add-company-drawer > summary {
+.add-company-modal {
   align-items: center;
-  background: #ffffff;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: var(--shadow-soft);
-  cursor: pointer;
-  display: inline-flex;
-  gap: 12px;
-  justify-content: space-between;
-  list-style: none;
-  min-height: 40px;
-  padding: 0 10px 0 14px;
-}
-
-.add-company-drawer > summary::-webkit-details-marker {
+  background: rgba(22, 36, 33, 0.34);
   display: none;
+  inset: 0;
+  justify-content: center;
+  padding: 28px;
+  position: fixed;
+  z-index: 50;
 }
 
-.add-company-drawer > summary h2 {
-  color: var(--accent-strong);
-  font-size: 14px;
-  margin: 0;
+#add-company-modal:target + .add-company-modal {
+  display: flex;
 }
 
-.add-company-drawer[open] > summary {
-  border-color: #c7ded4;
+.modal-backdrop {
+  inset: 0;
+  position: absolute;
 }
 
-.add-company-content {
+.add-company-dialog {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: var(--shadow-soft);
-  margin-top: 12px;
-  padding: 14px;
-  width: 100%;
-}
-
-.add-company-drawer:not([open]) .add-company-content {
-  display: none;
-}
-
-.company-add-strip:target .add-company-content {
+  box-shadow: var(--shadow);
   display: grid;
+  gap: 14px;
+  max-height: min(720px, calc(100vh - 56px));
+  overflow: auto;
+  padding: 18px;
+  position: relative;
+  width: min(760px, calc(100vw - 48px));
+}
+
+.modal-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+}
+
+.modal-head h2 {
+  font-size: 18px;
+  margin: 0;
+}
+
+.modal-close {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--accent-strong);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.add-company-content {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  margin-top: 0;
+  padding: 0;
+  width: 100%;
 }
 
 .config-panel {
@@ -722,7 +734,7 @@ textarea {
   gap: 6px;
 }
 
-.add-company-drawer label {
+.add-company-dialog label {
   display: grid;
   gap: 7px;
 }
@@ -732,13 +744,13 @@ textarea {
   font-size: 12px;
 }
 
-.add-company-drawer label span {
+.add-company-dialog label span {
   color: var(--muted);
   font-size: 12px;
 }
 
 .config-panel label span b,
-.add-company-drawer label span b {
+.add-company-dialog label span b {
   color: var(--muted);
   font-weight: 500;
 }
@@ -746,9 +758,9 @@ textarea {
 .config-panel select,
 .config-panel input,
 .config-panel textarea,
-.add-company-drawer select,
-.add-company-drawer input,
-.add-company-drawer textarea {
+.add-company-dialog select,
+.add-company-dialog input,
+.add-company-dialog textarea {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -762,7 +774,7 @@ textarea {
 }
 
 .config-panel textarea,
-.add-company-drawer textarea {
+.add-company-dialog textarea {
   min-height: 118px;
   resize: vertical;
 }
@@ -792,28 +804,9 @@ details.config-panel > summary::-webkit-details-marker {
   display: none;
 }
 
-.summary-indicator {
-  background: var(--panel-strong);
-  border-radius: 999px;
-  color: var(--accent-strong);
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 5px 9px;
-}
-
-details[open] .summary-indicator {
-  background: var(--accent);
-  color: #ffffff;
-}
-
 .drawer-content {
   border-top: 1px solid var(--line);
   padding-top: 12px;
-}
-
-.add-company-drawer .drawer-content {
-  border-top: 0;
 }
 
 .segmented-workspace {
@@ -858,6 +851,7 @@ details[open] .summary-indicator {
 
 .segment-panel {
   display: none;
+  min-height: 240px;
 }
 
 #add-company-ai:checked ~ .segment-panel-ai,
@@ -886,7 +880,7 @@ details[open] .summary-indicator {
 }
 
 .segment-panel-text textarea {
-  min-height: 112px;
+  min-height: 96px;
 }
 
 .panel-head h2,
@@ -906,6 +900,8 @@ details[open] .summary-indicator {
   border-radius: 8px;
   display: grid;
   gap: 10px;
+  grid-template-rows: auto 1fr auto;
+  min-height: 240px;
   padding: 14px;
 }
 

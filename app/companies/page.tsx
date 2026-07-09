@@ -357,7 +357,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
           <h1>企业招聘追踪</h1>
         </div>
         <div className="toolbar">
-          <a className="button secondary" href="#add-company">
+          <a className="button secondary" href="#add-company-modal">
             添加候选公司
           </a>
           <form action={syncMonitorJobs}>
@@ -383,15 +383,17 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
         </div>
       </div>
 
-      <div className="company-add-strip" id="add-company">
-        <details className="add-company-drawer">
-          <summary className="panel-head">
-            <div>
-              <h2>添加候选公司</h2>
-            </div>
-            <span className="summary-indicator">展开</span>
-          </summary>
-          <div className="drawer-content segmented-workspace add-company-content">
+      <div aria-hidden="true" className="modal-anchor" id="add-company-modal" />
+      <div className="add-company-modal" role="dialog" aria-labelledby="add-company-title">
+        <a aria-label="关闭添加候选公司" className="modal-backdrop" href="/companies" />
+        <section className="add-company-dialog">
+          <header className="modal-head">
+            <h2 id="add-company-title">添加候选公司</h2>
+            <a className="modal-close" href="/companies" aria-label="关闭">
+              关闭
+            </a>
+          </header>
+          <div className="segmented-workspace add-company-content">
             <input className="segment-radio" defaultChecked id="add-company-ai" name="add-company-mode" type="radio" />
             <input className="segment-radio" id="add-company-sheet" name="add-company-mode" type="radio" />
             <input className="segment-radio" id="add-company-text" name="add-company-mode" type="radio" />
@@ -406,7 +408,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
               <h3>按求职范围生成候选企业</h3>
               <div className="segment-form-grid">
                 <label>
-                  <span>选择求职范围 <b>· AI 会根据岗位方向、城市、行业和关键词建议值得追踪的企业，生成后进入候选区。</b></span>
+                  <span>选择求职范围 <b>（AI 会根据岗位方向、城市、行业和关键词建议值得追踪的企业，生成后进入候选区。）</b></span>
                   <select name="strategyId" required>
                     <option value="">选择一个求职范围</option>
                     {strategies.map((strategy) => (
@@ -426,7 +428,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
               <h3>上传企业清单</h3>
               <div className="segment-form-grid">
                 <label>
-                  <span>上传 .xlsx 文件 <b>· 必填列：公司、招聘入口、标签；可选列：城市、方向、关键词、优先级、备注。</b></span>
+                  <span>上传 .xlsx 文件</span>
                   <input name="companyWorkbook" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
                 </label>
               </div>
@@ -451,7 +453,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
               </button>
             </form>
           </div>
-        </details>
+        </section>
       </div>
 
       <div className="panel">
