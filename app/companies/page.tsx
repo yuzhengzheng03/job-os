@@ -192,6 +192,24 @@ async function updateCompanyStatus(formData: FormData) {
   revalidatePath("/companies");
 }
 
+async function removeCompany(formData: FormData) {
+  "use server";
+
+  const companyId = String(formData.get("companyId") || "");
+
+  if (!companyId) {
+    return;
+  }
+
+  await prisma.company.delete({
+    where: { id: companyId }
+  });
+
+  revalidatePath("/companies");
+  revalidatePath("/discovered");
+  revalidatePath("/opportunities");
+}
+
 async function updateCompanyRecruitingUrl(formData: FormData) {
   "use server";
 
@@ -339,6 +357,9 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
           <h1>企业招聘追踪</h1>
         </div>
         <div className="toolbar">
+          <a className="button secondary" href="#add-company">
+            添加候选公司
+          </a>
           <form action={syncMonitorJobs}>
             <button className="button" type="submit" disabled={monitoringCount === 0}>
               AI 检查招聘页
@@ -362,15 +383,15 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
         </div>
       </div>
 
-      <div className="config-grid company-config-grid">
-        <details className="config-panel add-company-panel unified-add-company-panel">
+      <div className="company-add-strip" id="add-company">
+        <details className="add-company-drawer">
           <summary className="panel-head">
             <div>
               <h2>添加候选公司</h2>
             </div>
             <span className="summary-indicator">展开</span>
           </summary>
-          <div className="drawer-content segmented-workspace">
+          <div className="drawer-content segmented-workspace add-company-content">
             <input className="segment-radio" defaultChecked id="add-company-ai" name="add-company-mode" type="radio" />
             <input className="segment-radio" id="add-company-sheet" name="add-company-mode" type="radio" />
             <input className="segment-radio" id="add-company-text" name="add-company-mode" type="radio" />
@@ -385,7 +406,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
               <h3>按求职范围生成候选企业</h3>
               <div className="segment-form-grid">
                 <label>
-                  <span>选择求职范围</span>
+                  <span>选择求职范围 <b>· AI 会根据岗位方向、城市、行业和关键词建议值得追踪的企业，生成后进入候选区。</b></span>
                   <select name="strategyId" required>
                     <option value="">选择一个求职范围</option>
                     {strategies.map((strategy) => (
@@ -395,7 +416,6 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
                     ))}
                   </select>
                 </label>
-                <div className="method-note">AI 会根据岗位方向、城市、行业和关键词建议值得追踪的企业，生成后进入候选区。</div>
               </div>
               <button className="button full-action" type="submit" disabled={strategies.length === 0}>
                 AI 生成候选
@@ -406,10 +426,9 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
               <h3>上传企业清单</h3>
               <div className="segment-form-grid">
                 <label>
-                  <span>上传 .xlsx 文件</span>
+                  <span>上传 .xlsx 文件 <b>· 必填列：公司、招聘入口、标签；可选列：城市、方向、关键词、优先级、备注。</b></span>
                   <input name="companyWorkbook" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
                 </label>
-                <div className="method-note">必填列：公司、招聘入口、标签；可选列：城市、方向、关键词、优先级、备注。</div>
               </div>
               <button className="button secondary" type="submit">
                 导入企业清单
@@ -518,31 +537,31 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
                     <TagsInputForm companyId={company.id} tags={asStringArray(company.tags)} />
                   </td>
                   <td>
-                    {company.status === companyStatuses.CANDIDATE ? (
-                      <form action={updateCompanyStatus}>
+                    <div className="company-row-actions">
+                      {company.status === companyStatuses.MONITORING ? (
+                        <form action={updateCompanyStatus}>
+                          <input name="companyId" type="hidden" value={company.id} />
+                          <input name="status" type="hidden" value={companyStatuses.PAUSED} />
+                          <button className="button secondary" type="submit">
+                            暂停
+                          </button>
+                        </form>
+                      ) : (
+                        <form action={updateCompanyStatus}>
+                          <input name="companyId" type="hidden" value={company.id} />
+                          <input name="status" type="hidden" value={companyStatuses.MONITORING} />
+                          <button className="button secondary" type="submit">
+                            监控
+                          </button>
+                        </form>
+                      )}
+                      <form action={removeCompany}>
                         <input name="companyId" type="hidden" value={company.id} />
-                        <input name="status" type="hidden" value={companyStatuses.MONITORING} />
-                        <button className="button secondary" type="submit">
-                          加入追踪
+                        <button className="button ghost-danger" type="submit">
+                          移除
                         </button>
                       </form>
-                    ) : company.status === companyStatuses.MONITORING ? (
-                      <form action={updateCompanyStatus}>
-                        <input name="companyId" type="hidden" value={company.id} />
-                        <input name="status" type="hidden" value={companyStatuses.PAUSED} />
-                        <button className="button secondary" type="submit">
-                          移出追踪
-                        </button>
-                      </form>
-                    ) : (
-                      <form action={updateCompanyStatus}>
-                        <input name="companyId" type="hidden" value={company.id} />
-                        <input name="status" type="hidden" value={companyStatuses.MONITORING} />
-                        <button className="button secondary" type="submit">
-                          加入追踪
-                        </button>
-                      </form>
-                    )}
+                    </div>
                   </td>
                 </tr>
               ))}

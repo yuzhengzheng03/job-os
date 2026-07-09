@@ -195,6 +195,17 @@ textarea {
   color: var(--accent-strong);
 }
 
+.button.ghost-danger {
+  background: #ffffff;
+  border-color: #ead8d8;
+  color: var(--danger);
+}
+
+.button.ghost-danger:hover {
+  background: #fff7f7;
+  border-color: #d9bcbc;
+}
+
 .tabs,
 .filters {
   display: grid;
@@ -625,6 +636,65 @@ textarea {
   grid-template-columns: minmax(0, 1fr);
 }
 
+.company-add-strip {
+  display: grid;
+  justify-items: end;
+  margin: -6px 0 14px;
+}
+
+.add-company-drawer {
+  display: grid;
+  justify-items: end;
+  width: 100%;
+}
+
+.add-company-drawer > summary {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  cursor: pointer;
+  display: inline-flex;
+  gap: 12px;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 40px;
+  padding: 0 10px 0 14px;
+}
+
+.add-company-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.add-company-drawer > summary h2 {
+  color: var(--accent-strong);
+  font-size: 14px;
+  margin: 0;
+}
+
+.add-company-drawer[open] > summary {
+  border-color: #c7ded4;
+}
+
+.add-company-content {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-soft);
+  margin-top: 12px;
+  padding: 14px;
+  width: 100%;
+}
+
+.add-company-drawer:not([open]) .add-company-content {
+  display: none;
+}
+
+.company-add-strip:target .add-company-content {
+  display: grid;
+}
+
 .config-panel {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -652,14 +722,33 @@ textarea {
   gap: 6px;
 }
 
+.add-company-drawer label {
+  display: grid;
+  gap: 7px;
+}
+
 .config-panel label span {
   color: var(--muted);
   font-size: 12px;
 }
 
+.add-company-drawer label span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.config-panel label span b,
+.add-company-drawer label span b {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .config-panel select,
 .config-panel input,
-.config-panel textarea {
+.config-panel textarea,
+.add-company-drawer select,
+.add-company-drawer input,
+.add-company-drawer textarea {
   background: #ffffff;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -672,7 +761,8 @@ textarea {
   min-height: 38px;
 }
 
-.config-panel textarea {
+.config-panel textarea,
+.add-company-drawer textarea {
   min-height: 118px;
   resize: vertical;
 }
@@ -722,9 +812,13 @@ details[open] .summary-indicator {
   padding-top: 12px;
 }
 
+.add-company-drawer .drawer-content {
+  border-top: 0;
+}
+
 .segmented-workspace {
   display: grid;
-  gap: 14px;
+  gap: 12px;
 }
 
 .segment-radio {
@@ -764,7 +858,6 @@ details[open] .summary-indicator {
 
 .segment-panel {
   display: none;
-  min-height: 214px;
 }
 
 #add-company-ai:checked ~ .segment-panel-ai,
@@ -777,7 +870,7 @@ details[open] .summary-indicator {
   align-items: stretch;
   display: grid;
   gap: 14px;
-  grid-template-columns: minmax(280px, 0.9fr) minmax(260px, 1.1fr);
+  grid-template-columns: minmax(260px, 1fr);
 }
 
 .method-note {
@@ -813,7 +906,7 @@ details[open] .summary-indicator {
   border-radius: 8px;
   display: grid;
   gap: 10px;
-  padding: 12px;
+  padding: 14px;
 }
 
 .import-method h3 {
@@ -838,6 +931,18 @@ details[open] .summary-indicator {
   display: flex;
   flex-wrap: nowrap;
   gap: 6px;
+}
+
+.company-row-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.company-row-actions .button {
+  min-height: 32px;
+  padding: 0 12px;
 }
 
 .row-actions .button {
