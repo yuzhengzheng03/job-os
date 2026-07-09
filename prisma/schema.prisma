@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  name           String
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  searchProfiles SearchProfile[]
+  companies      Company[]
+  opportunities  Opportunity[]
+}
+
+/// User Data: SearchProfile defines Discovery intent. It does not own job data.
+model SearchProfile {
+  id                    String   @id @default(cuid())
+  userId                String
+  name                  String
+  keywords              Json
+  locations             Json
+  industries            Json?
+  educationRequirements Json?
+  recruitmentTypes      Json?
+  sourceScope           Json?
+  enabled               Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, enabled])
+}
+
+/// System Data: Source represents where recruiting information comes from.
+model Source {
+  id                 String      @id @default(cuid())
+  name               String
+  type               String      @default("OTHER")
+  baseUrl            String?
+  loginRequired      Boolean     @default(false)
+  searchCapabilities Json?
+  updateStrategy     Json?
+  antiCrawlNotes     String?
+  adapterKey         String
+  enabled            Boolean     @default(true)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  sourceJobs         SourceJob[]
+
+  @@unique([type, name])
+  @@index([enabled, type])
+}
+
+/// Raw Data: SourceJob is immutable internet fact.
+model SourceJob {
+  id                    String                 @id @default(cuid())
+  sourceId              String
+  externalId            String?
+  url                   String
+  rawHtml               String?
+  rawMarkdown           String?
+  rawText               String
+  screenshotPath        String?
+  publishedAt           DateTime?
+  sourceUpdatedAt       DateTime?
+  fetchedAt             DateTime               @default(now())
+  contentHash           String
+  createdAt             DateTime               @default(now())
+  source                Source                 @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  opportunitySourceJobs OpportunitySourceJob[]
+  jobAnalyses           JobAnalysis[]
+
+  @@index([sourceId, contentHash])
+  @@index([url])
+}
+
+/// User Data: Company is for long-term monitoring, not Discovery input.
+model Company {
+  id              String        @id @default(cuid())
+  userId          String
+  name            String
+  normalizedName  String
+  websiteUrl      String?
+  careerUrl       String?
+  recruitingUrls  Json?
+  tags            Json?
+  priority        Int           @default(0)
+  status          String        @default("CANDIDATE")
+  monitorConfig   Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunities   Opportunity[]
+
+  @@unique([userId, normalizedName])
+  @@index([userId, status, priority])
+}
+
+/// Core Business Object: Opportunity is what the user actually manages.
+model Opportunity {
+  id                    String                 @id @default(cuid())
+  userId                String
+  companyId             String?
+  title                 String
+  normalizedTitle       String
+  location              String?
+  recruitmentType       String?
+  status                String                 @default("DISCOVERED")
+  priority              Int                    @default(0)
+  userNotes             String?
+  applicationInfo       Json?
+  deadlineAt            DateTime?
+  firstDiscoveredAt     DateTime               @default(now())
+  lastSeenAt            DateTime               @default(now())
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company               Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  opportunitySourceJobs OpportunitySourceJob[]
+  jobAnalyses           JobAnalysis[]
+  timelines             Timeline[]
+  attachments           Attachment[]
+
+  @@index([userId, status, priority])
+  @@index([companyId])
+}
+
+/// Mapping: many SourceJobs may represent one Opportunity.
+model OpportunitySourceJob {
+  id            String      @id @default(cuid())
+  opportunityId String
+  sourceJobId   String
+  matchReason   String?
+  matchScore    Float?
+  createdAt     DateTime    @default(now())
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  sourceJob     SourceJob   @relation(fields: [sourceJobId], references: [id], onDelete: Restrict)
+
+  @@unique([opportunityId, sourceJobId])
+  @@index([sourceJobId])
+}
+
+/// Generated Data: JobAnalysis is versioned AI/system understanding.
+model JobAnalysis {
+  id               String      @id @default(cuid())
+  opportunityId    String
+  sourceJobId      String
+  version          Int
+  model            String
+  promptVersion    String
+  summary          String
+  responsibilities Json
+  requirements     Json
+  keywords         Json
+  skills           Json
+  fitNotes         String?
+  risks            Json?
+  rawOutput        Json
+  createdAt        DateTime    @default(now())
+  opportunity      Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  sourceJob        SourceJob   @relation(fields: [sourceJobId], references: [id], onDelete: Restrict)
+
+  @@unique([opportunityId, version])
+  @@index([sourceJobId])
+}
+
+/// Event Stream: Timeline is append-only.
+model Timeline {
+  id            String            @id @default(cuid())
+  opportunityId String
+  actorType     String
+  eventType     String
+  title         String
+  body          String?
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+  opportunity   Opportunity       @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, createdAt])
+}
+
+/// User Data: Attachment always belongs to an Opportunity.
+model Attachment {
+  id            String         @id @default(cuid())
+  opportunityId String
+  type          String         @default("OTHER")
+  filename      String
+  mimeType      String
+  fileSize      Int
+  storagePath   String
+  description   String?
+  createdAt     DateTime       @default(now())
+  opportunity   Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, type])
+}
