@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { randomUUID } from "crypto";
 import { mkdir, unlink, writeFile } from "fs/promises";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { notFound } from "next/navigation";
 import path from "path";
@@ -408,7 +409,9 @@ export default async function OpportunityPage({ params }: OpportunityPageProps) 
             <span className="detail-pill danger">{priorityLabel}</span>
           </div>
         </div>
-        <span className="detail-inline-badge">当前页可直接修改</span>
+        <Link className="detail-back-link" href="/opportunities">
+          返回看板
+        </Link>
       </header>
 
       <div className="detail-layout">

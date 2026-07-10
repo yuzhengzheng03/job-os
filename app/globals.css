@@ -1190,13 +1190,16 @@ details.config-panel > summary::-webkit-details-marker {
   color: #e5484d;
 }
 
-.detail-inline-badge {
+.detail-back-link {
+  align-items: center;
   background: #f0f6ff;
   border: 1px solid #cfddff;
   border-radius: 999px;
   color: #2563ff;
+  display: inline-flex;
   font-size: 12px;
   font-weight: 700;
+  min-height: 34px;
   padding: 7px 11px;
   white-space: nowrap;
 }
@@ -1590,7 +1593,7 @@ details.config-panel > summary::-webkit-details-marker {
     grid-template-columns: auto minmax(0, 1fr);
   }
 
-  .detail-inline-badge {
+  .detail-back-link {
     grid-column: 1 / -1;
     width: fit-content;
   }
