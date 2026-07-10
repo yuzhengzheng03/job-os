@@ -238,6 +238,76 @@ function getApplicationInfo(value: unknown) {
   };
 }
 
+function formatShortDate(value?: Date | null) {
+  return value ? value.toLocaleDateString("zh-CN") : "-";
+}
+
+function getDueLabel(value?: Date | string | null) {
+  if (!value) return "";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "";
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+  const diffDays = Math.round((target - today) / 86400000);
+
+  if (diffDays === 0) return "今日";
+  if (diffDays === 1) return "明日";
+  if (diffDays > 1 && diffDays <= 7) return `${diffDays} 天后`;
+  return date.toLocaleDateString("zh-CN");
+}
+
+function getKeyItem(opportunity: Awaited<ReturnType<typeof getOpportunities>>[number]) {
+  const applicationInfo = getApplicationInfo(opportunity.applicationInfo);
+  const nextInterviewLabel = getDueLabel(applicationInfo.nextInterviewAt);
+
+  if (applicationInfo.nextInterviewAt) {
+    return {
+      label: nextInterviewLabel || "面试",
+      text: applicationInfo.nextInterviewAt.replace("T", " ")
+    };
+  }
+
+  const followUpLabel = getDueLabel(applicationInfo.followUpAt);
+  if (applicationInfo.followUpAt) {
+    return {
+      label: followUpLabel || "跟进",
+      text: "跟进投递进展"
+    };
+  }
+
+  const deadlineLabel = getDueLabel(opportunity.deadlineAt);
+  if (opportunity.deadlineAt) {
+    return {
+      label: deadlineLabel || "截止",
+      text: `投递截止 ${formatShortDate(opportunity.deadlineAt)}`
+    };
+  }
+
+  return {
+    label: "待办",
+    text: nextStatusByStatus[opportunity.status as OpportunityStatusValue]
+      ? `推进到${getOpportunityStatusLabel(nextStatusByStatus[opportunity.status as OpportunityStatusValue] as string)}`
+      : "保持关注"
+  };
+}
+
+function getAiReminder(opportunity: Awaited<ReturnType<typeof getOpportunities>>[number]) {
+  const analysis = opportunity.jobAnalyses[0];
+  const skills = Array.isArray(analysis?.skills) ? analysis.skills.filter((item): item is string => typeof item === "string") : [];
+
+  if (skills[0]) {
+    return `建议准备${skills[0]}`;
+  }
+
+  if (analysis?.summary) {
+    return analysis.summary;
+  }
+
+  return "补充 JD 原文后生成岗位解读";
+}
+
 async function getFilterOptions() {
   if (!process.env.DATABASE_URL) {
     return {
@@ -404,8 +474,9 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                     <div className="board-cards">
                       {items.map((opportunity) => {
                         const sourceJob = opportunity.opportunitySourceJobs[0]?.sourceJob;
-                        const appliedDate = getAppliedDate(opportunity);
                         const applicationInfo = getApplicationInfo(opportunity.applicationInfo);
+                        const keyItem = getKeyItem(opportunity);
+                        const aiReminder = getAiReminder(opportunity);
 
                         return (
                           <article className="opportunity-card" key={opportunity.id}>
@@ -420,15 +491,24 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                               {opportunity.company?.name ?? "未确认公司"} · {opportunity.location ?? "未确认城市"}
                             </p>
 
-                            <div className="card-facts">
-                              <span>来源：{getSourceDisplayLabel(sourceJob?.source.type, sourceJob?.source.name)}</span>
-                              <span>更新：{opportunity.updatedAt.toLocaleDateString()}</span>
-                              <span>投递：{appliedDate || "-"}</span>
-                              <span>渠道：{applicationInfo.applicationChannel || "-"}</span>
-                              <span>简历：{applicationInfo.resumeVersion || "-"}</span>
-                              <span>跟进：{applicationInfo.followUpAt || "-"}</span>
-                              <span>面试：{applicationInfo.nextInterviewAt || "-"}</span>
-                              <span>截止：{opportunity.deadlineAt?.toLocaleDateString() ?? "-"}</span>
+                            <p className="card-submeta">
+                              {applicationInfo.applicationChannel || getSourceDisplayLabel(sourceJob?.source.type, sourceJob?.source.name)} · {opportunity.recruitmentType ?? "招聘类型待确认"}
+                            </p>
+
+                            <div className="card-status-row">
+                              <span className="card-status-dot" />
+                              <strong>{getOpportunityStatusLabel(opportunity.status)}</strong>
+                              <span className="card-updated">更新：{formatShortDate(opportunity.updatedAt)}</span>
+                            </div>
+
+                            <div className="card-key-item">
+                              <span>{keyItem.label}</span>
+                              <strong>{keyItem.text}</strong>
+                            </div>
+
+                            <div className="card-ai-reminder">
+                              <span>AI 提醒</span>
+                              <p>{aiReminder}</p>
                             </div>
 
                             <div className="card-actions">
@@ -436,8 +516,8 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                                 查看详情
                               </Link>
                               {sourceJob?.url ? (
-                                <a className="button secondary" href={sourceJob.url} rel="noreferrer" target="_blank">
-                                  岗位链接
+                                <a className="button" href={sourceJob.url} rel="noreferrer" target="_blank">
+                                  官网
                                 </a>
                               ) : null}
                             </div>
