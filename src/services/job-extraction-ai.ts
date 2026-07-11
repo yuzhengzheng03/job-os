@@ -1,3 +1,6 @@
+import { getConfiguredAIConfig } from "@/src/lib/ai-config";
+import { requestAIJson } from "@/src/services/ai-json-chat";
+
 export type ExtractedJob = {
   title: string;
   location?: string;
@@ -68,9 +71,9 @@ export async function extractJobsFromCareerText(input: ExtractJobsInput): Promis
   rawOutput: unknown;
 }> {
   const fallback = localExtractJobs(input);
-  const apiKey = process.env.OPENAI_API_KEY;
+  const aiConfig = await getConfiguredAIConfig();
 
-  if (!apiKey) {
+  if (!aiConfig.apiKey) {
     return {
       jobs: fallback,
       model: "local-career-extraction-v0",
@@ -78,72 +81,40 @@ export async function extractJobsFromCareerText(input: ExtractJobsInput): Promis
     };
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: [
-              "你是 Job OS 的招聘页岗位抽取助手。",
-              "你只从用户提供的招聘页文本中抽取真实出现的岗位，不要编造岗位。",
-              "不要输出匹配分数，不要输出推荐动作。",
-              "如果页面没有明确岗位，返回 jobs: []。",
-              "只返回合法 JSON，不要输出 Markdown。"
-            ].join("\n")
-          },
-          {
-            role: "user",
-            content: JSON.stringify({
-              task: "从招聘页文本抽取岗位，供用户确认后加入岗位管理看板。",
-              companyName: input.companyName,
-              url: input.url,
-              fallbackLocation: input.fallbackLocation,
-              outputSchema: {
-                jobs: [
-                  {
-                    title: "string，岗位名称",
-                    location: "string，可选，城市/地点",
-                    recruitmentType: "string，可选，校招/实习/社招/提前批等",
-                    rawText: "string，该岗位在页面中的原文片段，保留职责/要求/地点等关键信息"
-                  }
-                ]
-              },
-              pageText: input.pageText.slice(0, 50000)
-            })
-          }
-        ]
-      })
+    const result = await requestAIJson({
+      system: [
+        "你是 Job OS 的招聘页岗位抽取助手。",
+        "你只从用户提供的招聘页文本中抽取真实出现的岗位，不要编造岗位。",
+        "不要输出匹配分数，不要输出推荐动作。",
+        "如果页面没有明确岗位，返回 jobs: []。",
+        "只返回合法 JSON，不要输出 Markdown。"
+      ].join("\n"),
+      user: {
+        task: "从招聘页文本抽取岗位，供用户确认后加入岗位管理看板。",
+        companyName: input.companyName,
+        url: input.url,
+        fallbackLocation: input.fallbackLocation,
+        outputSchema: {
+          jobs: [
+            {
+              title: "string，岗位名称",
+              location: "string，可选，城市/地点",
+              recruitmentType: "string，可选，校招/实习/社招/提前批等",
+              rawText: "string，该岗位在页面中的原文片段，保留职责/要求/地点等关键信息"
+            }
+          ]
+        },
+        pageText: input.pageText.slice(0, 50000)
+      }
     });
 
-    if (!response.ok) {
-      throw new Error(await response.text());
-    }
-
-    const rawOutput = await response.json();
-    const content = rawOutput?.choices?.[0]?.message?.content;
-
-    if (typeof content !== "string") {
-      throw new Error("OpenAI response did not include text content.");
-    }
-
-    const parsed = JSON.parse(content);
-    const jobs = normalizeExtractedJobs(parsed, input.fallbackLocation);
+    const jobs = normalizeExtractedJobs(result.parsed, input.fallbackLocation);
 
     return {
       jobs: jobs.length ? jobs : fallback,
-      model,
-      rawOutput
+      model: result.model,
+      rawOutput: result.rawOutput
     };
   } catch {
     return {

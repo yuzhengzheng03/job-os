@@ -48,6 +48,21 @@ function toInputJson(value: unknown): Prisma.InputJsonValue {
   return JSON.parse(JSON.stringify(value ?? null)) as Prisma.InputJsonValue;
 }
 
+function splitList(value: FormDataEntryValue | null) {
+  return String(value || "")
+    .split(/[,，、/；;｜|]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function splitEducationAndRecruitment(value: FormDataEntryValue | null) {
+  const values = splitList(value);
+  const recruitmentTypes = values.filter((item) => /校招|社招|实习|秋招|春招|提前批|全职/.test(item));
+  const educationRequirements = values.filter((item) => !recruitmentTypes.includes(item));
+
+  return { educationRequirements, recruitmentTypes };
+}
+
 async function createMonitorStrategy(formData: FormData) {
   "use server";
 
@@ -88,6 +103,64 @@ async function createMonitorStrategy(formData: FormData) {
   });
 
   revalidatePath("/search-profiles");
+}
+
+async function updateMonitorStrategy(formData: FormData) {
+  "use server";
+
+  const profileId = String(formData.get("profileId") || "").trim();
+  const name = String(formData.get("name") || "").trim();
+
+  if (!profileId || !name || !process.env.DATABASE_URL) {
+    return;
+  }
+
+  const current = await prisma.searchProfile.findUnique({ where: { id: profileId } });
+  if (!current) {
+    return;
+  }
+
+  const meta = getStrategyMeta(current.sourceScope);
+  const roles = splitList(formData.get("roles"));
+  const locations = splitList(formData.get("locations"));
+  const industries = splitList(formData.get("industries"));
+  const keywords = splitList(formData.get("keywords"));
+  const background = splitList(formData.get("background"));
+  const { educationRequirements, recruitmentTypes } = splitEducationAndRecruitment(formData.get("educationAndRecruitment"));
+
+  await prisma.searchProfile.update({
+    where: { id: profileId },
+    data: {
+      name,
+      keywords,
+      locations,
+      industries,
+      educationRequirements,
+      recruitmentTypes,
+      sourceScope: {
+        ...meta,
+        roles,
+        background
+      }
+    }
+  });
+
+  revalidatePath("/search-profiles");
+  revalidatePath("/companies");
+}
+
+async function removeMonitorStrategy(formData: FormData) {
+  "use server";
+
+  const profileId = String(formData.get("profileId") || "").trim();
+
+  if (!profileId || !process.env.DATABASE_URL) {
+    return;
+  }
+
+  await prisma.searchProfile.delete({ where: { id: profileId } }).catch(() => undefined);
+  revalidatePath("/search-profiles");
+  revalidatePath("/companies");
 }
 
 export default async function SearchProfilesPage() {
@@ -150,44 +223,62 @@ export default async function SearchProfilesPage() {
             const keywords = asStringArray(profile.keywords);
 
             return (
-              <article className="strategy-card" key={profile.id}>
+              <form action={updateMonitorStrategy} className="strategy-card strategy-edit-card" key={profile.id}>
+                <input name="profileId" type="hidden" value={profile.id} />
                 <div className="strategy-card-head">
                   <div>
-                    <h2>{profile.name}</h2>
-                    <p>{getStrategyModeLabel(meta.strategyMode)} · {profile.enabled ? "正在监控" : "已暂停"}</p>
+                    <label className="strategy-title-field">
+                      <span>求职范围名称</span>
+                      <input name="name" defaultValue={profile.name} />
+                    </label>
+                    <p>{getStrategyModeLabel(meta.strategyMode)} · 正在监控</p>
                   </div>
-                  <span className="status">{profile.enabled ? "启用" : "暂停"}</span>
+                  <div className="strategy-actions">
+                    <button className="button secondary" type="submit">
+                      修改
+                    </button>
+                    <button className="button ghost-danger" formAction={removeMonitorStrategy} type="submit">
+                      移除
+                    </button>
+                  </div>
                 </div>
 
                 <div className="strategy-fields">
-                  <div>
+                  <label>
                     <span>岗位方向</span>
-                    <strong>{roles.length ? roles.join("、") : "待补充"}</strong>
-                  </div>
-                  <div>
+                    <input name="roles" defaultValue={roles.join("、")} placeholder="例如：产品经理、临床应用" />
+                  </label>
+                  <label>
                     <span>城市地点</span>
-                    <strong>{locations.length ? locations.join("、") : "不限"}</strong>
-                  </div>
-                  <div>
+                    <input name="locations" defaultValue={locations.join("、")} placeholder="例如：上海、北京" />
+                  </label>
+                  <label>
                     <span>行业领域</span>
-                    <strong>{industries.length ? industries.join("、") : "不限"}</strong>
-                  </div>
-                  <div>
+                    <input name="industries" defaultValue={industries.join("、")} placeholder="例如：医疗器械、生物医学" />
+                  </label>
+                  <label>
                     <span>学历/招聘类型</span>
-                    <strong>
-                      {[...educationRequirements, ...recruitmentTypes].length ? [...educationRequirements, ...recruitmentTypes].join("、") : "不限"}
-                    </strong>
-                  </div>
+                    <input
+                      name="educationAndRecruitment"
+                      defaultValue={[...educationRequirements, ...recruitmentTypes].join("、")}
+                      placeholder="例如：硕士、校招、提前批"
+                    />
+                  </label>
                 </div>
 
-                <div className="chips" aria-label="搜索关键词">
-                  {keywords.length ? keywords.map((keyword) => <span key={keyword}>{keyword}</span>) : <span>暂无关键词</span>}
-                </div>
+                <label className="strategy-wide-field">
+                  <span>搜索关键词</span>
+                  <input name="keywords" defaultValue={keywords.join("、")} placeholder="例如：产品经理、医疗 AI、Agent" />
+                </label>
 
-                {meta.background?.length ? <p className="strategy-note">背景：{meta.background.join("、")}</p> : null}
+                <label className="strategy-wide-field">
+                  <span>背景/补充条件</span>
+                  <input name="background" defaultValue={meta.background?.join("、") ?? ""} placeholder="例如：生物医学工程、科研经历" />
+                </label>
+
                 {meta.excludeKeywords?.length ? <p className="strategy-note">排除：{meta.excludeKeywords.join("、")}</p> : null}
                 {meta.generatedBy ? <p className="strategy-note muted">生成模型：{meta.generatedBy}</p> : null}
-              </article>
+              </form>
             );
           })}
         </div>

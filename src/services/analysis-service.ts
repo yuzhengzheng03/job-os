@@ -1,4 +1,5 @@
 import { opportunityStatuses, timelineActorTypes, timelineEventTypes } from "@/src/domain/domain-values";
+import { getConfiguredOpenAIApiKey } from "@/src/lib/ai-config";
 import { prisma } from "@/src/lib/prisma";
 import { analyzeJobWithOpenAI, hasOpenAIConfig, type JobAnalysisResult } from "@/src/services/openai-job-analysis";
 import { timelineService } from "@/src/services/timeline-service";
@@ -42,8 +43,12 @@ function inferRecruitmentType(text: string) {
   return undefined;
 }
 
+type AnalyzeOptions = {
+  openAIApiKey?: string;
+};
+
 export class AnalysisService {
-  async analyze(opportunityId: string) {
+  async analyze(opportunityId: string, options: AnalyzeOptions = {}) {
     const opportunity = await prisma.opportunity.findUniqueOrThrow({
       where: { id: opportunityId },
       include: {
@@ -96,7 +101,9 @@ export class AnalysisService {
     let rawOutput: unknown = buildMockAnalysis(sourceJob.rawText);
     let analysisData: JobAnalysisResult = buildMockAnalysis(sourceJob.rawText);
 
-    if (hasOpenAIConfig()) {
+    const openAIApiKey = options.openAIApiKey?.trim() || await getConfiguredOpenAIApiKey();
+
+    if (hasOpenAIConfig(openAIApiKey)) {
       try {
         const openAIResult = await analyzeJobWithOpenAI({
           title: opportunity.title,
@@ -104,6 +111,8 @@ export class AnalysisService {
           location: opportunity.location ?? undefined,
           url: sourceJob.url,
           rawText: sourceJob.rawText
+        }, {
+          apiKey: openAIApiKey
         });
 
         model = openAIResult.model;

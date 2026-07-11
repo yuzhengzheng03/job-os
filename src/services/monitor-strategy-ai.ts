@@ -1,3 +1,6 @@
+import { getConfiguredAIConfig } from "@/src/lib/ai-config";
+import { requestAIJson } from "@/src/services/ai-json-chat";
+
 export type MonitorStrategyDraft = {
   name: string;
   background: string[];
@@ -90,9 +93,9 @@ export async function generateMonitorStrategyDraft(description: string): Promise
   rawOutput: unknown;
 }> {
   const fallback = buildLocalStrategyDraft(description);
-  const apiKey = process.env.OPENAI_API_KEY;
+  const aiConfig = await getConfiguredAIConfig();
 
-  if (!apiKey) {
+  if (!aiConfig.apiKey) {
     return {
       draft: fallback,
       model: "local-rule-strategy-v0",
@@ -100,69 +103,36 @@ export async function generateMonitorStrategyDraft(description: string): Promise
     };
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: [
-              "你是 Job OS 的监控策略助手。",
-              "用户会用自然语言描述想找的岗位、城市、行业、学历和公司偏好。",
-              "你需要把描述转成结构化监控策略。",
-              "不要编造用户没提到的硬性条件；可以补充合理关键词。",
-              "只返回合法 JSON，不要输出 Markdown。"
-            ].join("\n")
-          },
-          {
-            role: "user",
-            content: JSON.stringify({
-              description,
-              outputSchema: {
-                name: "string，策略名称",
-                background: "string[]，专业/背景/技能",
-                roles: "string[]，岗位方向",
-                locations: "string[]，城市/地区",
-                industries: "string[]，行业/领域",
-                educationRequirements: "string[]，学历要求",
-                recruitmentTypes: "string[]，招聘类型",
-                keywords: "string[]，用于搜索岗位的关键词",
-                excludeKeywords: "string[]，排除词",
-                strategyMode: "ROLE_FIRST | DOMAIN_FIRST | COMPANY_FIRST"
-              }
-            })
-          }
-        ]
-      })
+    const result = await requestAIJson({
+      system: [
+        "你是 Job OS 的监控策略助手。",
+        "用户会用自然语言描述想找的岗位、城市、行业、学历和公司偏好。",
+        "你需要把描述转成结构化监控策略。",
+        "不要编造用户没提到的硬性条件；可以补充合理关键词。",
+        "只返回合法 JSON，不要输出 Markdown。"
+      ].join("\n"),
+      user: {
+        description,
+        outputSchema: {
+          name: "string，策略名称",
+          background: "string[]，专业/背景/技能",
+          roles: "string[]，岗位方向",
+          locations: "string[]，城市/地区",
+          industries: "string[]，行业/领域",
+          educationRequirements: "string[]，学历要求",
+          recruitmentTypes: "string[]，招聘类型",
+          keywords: "string[]，用于搜索岗位的关键词",
+          excludeKeywords: "string[]，排除词",
+          strategyMode: "ROLE_FIRST | DOMAIN_FIRST | COMPANY_FIRST"
+        }
+      }
     });
 
-    if (!response.ok) {
-      throw new Error(await response.text());
-    }
-
-    const rawOutput = await response.json();
-    const content = rawOutput?.choices?.[0]?.message?.content;
-
-    if (typeof content !== "string") {
-      throw new Error("OpenAI response did not include text content.");
-    }
-
-    const parsed = JSON.parse(content);
-
     return {
-      draft: normalizeStrategyDraft(parsed, fallback),
-      model,
-      rawOutput
+      draft: normalizeStrategyDraft(result.parsed, fallback),
+      model: result.model,
+      rawOutput: result.rawOutput
     };
   } catch {
     return {
@@ -172,4 +142,3 @@ export async function generateMonitorStrategyDraft(description: string): Promise
     };
   }
 }
-

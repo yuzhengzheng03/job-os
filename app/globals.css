@@ -11,6 +11,7 @@
   --danger: #9b2c2c;
   --shadow: 0 18px 45px rgba(20, 48, 41, 0.08);
   --shadow-soft: 0 10px 28px rgba(20, 48, 41, 0.06);
+  --font-ui: Inter, "SF Pro Text", "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "Helvetica Neue", Arial, sans-serif;
 }
 
 * {
@@ -23,7 +24,8 @@ body {
   min-height: 100%;
   background: var(--background);
   color: var(--foreground);
-  font-family: Inter, "PingFang SC", "Microsoft YaHei", Arial, Helvetica, sans-serif;
+  font-family: var(--font-ui);
+  font-size: 14px;
 }
 
 a {
@@ -35,6 +37,7 @@ button,
 input,
 select,
 textarea {
+  font-family: var(--font-ui);
   font: inherit;
 }
 
@@ -47,7 +50,10 @@ textarea {
 .sidebar {
   background: rgba(255, 255, 255, 0.82);
   border-right: 1px solid rgba(221, 232, 226, 0.82);
+  display: flex;
+  flex-direction: column;
   padding: 22px 16px;
+  position: relative;
 }
 
 .brand {
@@ -121,6 +127,116 @@ textarea {
   width: 3px;
 }
 
+.user-settings {
+  margin-bottom: 58px;
+  margin-top: auto;
+  position: relative;
+}
+
+.user-settings summary {
+  align-items: center;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  list-style: none;
+  padding: 10px 8px;
+}
+
+.user-settings summary::-webkit-details-marker {
+  display: none;
+}
+
+.user-settings summary:hover {
+  background: var(--panel-strong);
+}
+
+.avatar {
+  align-items: center;
+  background: var(--accent);
+  border-radius: 999px;
+  color: white;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  height: 32px;
+  justify-content: center;
+  width: 32px;
+}
+
+.user-settings summary strong,
+.user-settings summary small {
+  display: block;
+}
+
+.user-settings summary strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.user-settings summary small {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+
+.ai-config-popover {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  bottom: 56px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 10px;
+  left: 8px;
+  padding: 14px;
+  position: absolute;
+  width: 286px;
+  z-index: 20;
+}
+
+.ai-config-popover h2,
+.ai-config-popover p {
+  margin: 0;
+}
+
+.ai-config-popover h2 {
+  font-size: 15px;
+}
+
+.ai-config-popover p {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ai-config-popover label {
+  display: grid;
+  gap: 6px;
+}
+
+.ai-config-popover label span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ai-config-popover input,
+.ai-config-popover select {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.ai-config-actions {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+}
+
 .main {
   min-width: 0;
   padding: 24px 28px 34px;
@@ -156,6 +272,11 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.toolbar .button {
+  min-height: 36px;
+  min-width: 112px;
 }
 
 .button {
@@ -330,7 +451,7 @@ textarea {
 .opportunity-board {
   display: grid;
   gap: 12px;
-  grid-auto-columns: minmax(300px, 1fr);
+  grid-auto-columns: minmax(280px, 1fr);
   grid-auto-flow: column;
   overflow-x: auto;
   padding-bottom: 8px;
@@ -344,7 +465,7 @@ textarea {
   gap: 10px;
   grid-template-rows: auto 1fr;
   min-height: 420px;
-  min-width: 300px;
+  min-width: 280px;
   padding: 12px;
 }
 
@@ -406,9 +527,9 @@ textarea {
   border: 1px solid rgba(221, 232, 226, 0.95);
   border-radius: 8px;
   display: grid;
-  gap: 12px;
-  padding: 18px;
-  box-shadow: 0 14px 28px rgba(20, 48, 41, 0.08);
+  gap: 6px;
+  padding: 10px;
+  box-shadow: 0 10px 22px rgba(20, 48, 41, 0.07);
 }
 
 .card-title-row {
@@ -420,8 +541,12 @@ textarea {
 
 .card-title-row strong {
   color: #111816;
-  font-size: 24px;
-  line-height: 1.35;
+  display: -webkit-box;
+  font-size: 17px;
+  line-height: 1.25;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .priority {
@@ -429,45 +554,49 @@ textarea {
   border-radius: 8px;
   color: var(--accent-strong);
   flex: 0 0 auto;
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
-  padding: 8px 10px;
+  padding: 5px 8px;
   white-space: nowrap;
 }
 
 .card-meta {
   color: #4f5e59;
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 13px;
+  line-height: 1.35;
   margin: 0;
 }
 
 .card-submeta {
   color: #22734f;
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 13px;
+  display: -webkit-box;
+  line-height: 1.35;
   margin: -4px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
 }
 
 .card-status-row {
   align-items: center;
   border-top: 1px dashed #d9e4dd;
   display: flex;
-  gap: 10px;
-  padding-top: 14px;
+  gap: 6px;
+  padding-top: 6px;
 }
 
 .card-status-dot {
   background: #44c178;
-  border: 5px solid #d9f0e3;
+  border: 4px solid #d9f0e3;
   border-radius: 999px;
-  height: 18px;
-  width: 18px;
+  height: 14px;
+  width: 14px;
 }
 
 .card-status-row strong {
   color: #1f7c52;
-  font-size: 20px;
+  font-size: 16px;
 }
 
 .card-updated {
@@ -475,9 +604,9 @@ textarea {
   border: 1px solid #dce7e0;
   border-radius: 999px;
   color: #55645f;
-  font-size: 13px;
+  font-size: 12px;
   margin-left: auto;
-  padding: 6px 10px;
+  padding: 4px 8px;
   white-space: nowrap;
 }
 
@@ -485,9 +614,9 @@ textarea {
 .card-ai-reminder {
   border-radius: 8px;
   display: grid;
-  gap: 6px;
-  min-height: 72px;
-  padding: 14px;
+  gap: 4px;
+  min-height: 46px;
+  padding: 8px 9px;
 }
 
 .card-key-item {
@@ -496,14 +625,14 @@ textarea {
 
 .card-key-item span {
   color: #2b805c;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .card-key-item strong {
   color: #15221e;
-  font-size: 16px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.3;
 }
 
 .card-ai-reminder {
@@ -512,15 +641,15 @@ textarea {
 
 .card-ai-reminder span {
   color: #255bd8;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 800;
 }
 
 .card-ai-reminder p {
   color: #273733;
   display: -webkit-box;
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  line-height: 1.35;
   margin: 0;
   overflow: hidden;
   -webkit-box-orient: vertical;
@@ -540,14 +669,15 @@ textarea {
   border-top: 1px dashed #d9e4dd;
   display: flex;
   flex-wrap: nowrap;
-  gap: 12px;
-  padding-top: 14px;
+  gap: 6px;
+  padding-top: 6px;
 }
 
 .card-actions .button {
   flex: 1 1 0;
   justify-content: center;
-  min-height: 44px;
+  font-size: 13px;
+  min-height: 32px;
   white-space: nowrap;
 }
 
@@ -593,7 +723,7 @@ textarea {
 .strategy-grid {
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
 }
 
 .strategy-card {
@@ -601,7 +731,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   padding: 16px;
   box-shadow: var(--shadow-soft);
 }
@@ -611,6 +741,10 @@ textarea {
   display: flex;
   gap: 12px;
   justify-content: space-between;
+}
+
+.strategy-card-head > div:first-child {
+  min-width: 0;
 }
 
 .strategy-card h2 {
@@ -624,30 +758,73 @@ textarea {
   margin: 4px 0 0;
 }
 
+.strategy-title-field,
+.strategy-wide-field,
+.strategy-fields label {
+  display: grid;
+  gap: 6px;
+}
+
+.strategy-title-field span,
+.strategy-wide-field span,
+.strategy-fields span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.strategy-title-field input {
+  border: 0;
+  color: var(--foreground);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.25;
+  min-width: 0;
+  outline: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.strategy-title-field input:focus {
+  color: var(--accent-strong);
+}
+
+.strategy-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.strategy-actions .button {
+  min-height: 32px;
+  padding: 0 12px;
+}
+
 .strategy-fields {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.strategy-fields div {
-  background: var(--panel-strong);
+.strategy-fields input,
+.strategy-wide-field input {
+  background: #fbfdfc;
+  border: 1px solid var(--line);
   border-radius: 6px;
-  display: grid;
-  gap: 4px;
-  min-height: 68px;
-  padding: 10px;
+  color: var(--foreground);
+  font-weight: 650;
+  min-height: 38px;
+  min-width: 0;
+  padding: 8px 10px;
+  width: 100%;
 }
 
-.strategy-fields span {
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.strategy-fields strong {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.45;
+.strategy-fields input:focus,
+.strategy-wide-field input:focus,
+.ai-config-popover input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 139, 116, 0.12);
+  outline: 0;
 }
 
 .chips {
@@ -738,7 +915,7 @@ textarea {
   border-radius: 8px;
   box-shadow: var(--shadow);
   display: grid;
-  gap: 14px;
+  gap: 12px;
   max-height: min(720px, calc(100vh - 56px));
   overflow: auto;
   padding: 18px;
@@ -837,7 +1014,8 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 6px;
   color: var(--foreground);
-  padding: 9px 10px;
+  min-height: 38px;
+  padding: 8px 10px;
   width: 100%;
 }
 
@@ -847,7 +1025,7 @@ textarea {
 
 .config-panel textarea,
 .add-company-dialog textarea {
-  min-height: 118px;
+  min-height: 112px;
   resize: vertical;
 }
 
@@ -857,8 +1035,8 @@ textarea {
 }
 
 .full-action {
-  min-height: 44px;
-  width: fit-content;
+  min-height: 40px;
+  width: 100%;
 }
 
 .panel-head {
@@ -923,7 +1101,7 @@ details.config-panel > summary::-webkit-details-marker {
 
 .segment-panel {
   display: none;
-  min-height: 240px;
+  min-height: 218px;
 }
 
 #add-company-ai:checked ~ .segment-panel-ai,
@@ -933,9 +1111,9 @@ details.config-panel > summary::-webkit-details-marker {
 }
 
 .segment-form-grid {
-  align-items: stretch;
+  align-items: start;
   display: grid;
-  gap: 14px;
+  gap: 10px;
   grid-template-columns: minmax(260px, 1fr);
 }
 
@@ -952,7 +1130,7 @@ details.config-panel > summary::-webkit-details-marker {
 }
 
 .segment-panel-text textarea {
-  min-height: 96px;
+  min-height: 92px;
 }
 
 .panel-head h2,
@@ -971,9 +1149,10 @@ details.config-panel > summary::-webkit-details-marker {
   border: 1px solid var(--line);
   border-radius: 8px;
   display: grid;
-  gap: 10px;
-  grid-template-rows: auto 1fr auto;
-  min-height: 240px;
+  align-content: start;
+  gap: 12px;
+  grid-template-rows: auto auto auto;
+  min-height: 218px;
   padding: 14px;
 }
 
@@ -982,7 +1161,13 @@ details.config-panel > summary::-webkit-details-marker {
 }
 
 .import-method p {
-  min-height: 38px;
+  margin: 0;
+}
+
+.import-method .button {
+  justify-content: center;
+  min-height: 40px;
+  width: 100%;
 }
 
 .segmented-workspace .segment-panel {
@@ -1055,6 +1240,46 @@ details.config-panel > summary::-webkit-details-marker {
   text-overflow: ellipsis;
   white-space: nowrap;
   width: 100%;
+}
+
+.entry-status-cell {
+  min-width: 74px;
+  white-space: nowrap;
+}
+
+.entry-status {
+  background: var(--panel-strong);
+  border-radius: 999px;
+  color: var(--accent-strong);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.entry-status-failed {
+  color: #8a3c19;
+  letter-spacing: 0;
+}
+
+.check-time-cell {
+  line-height: 1.25;
+  min-width: 132px;
+  white-space: nowrap;
+}
+
+.check-time-cell span,
+.check-time-cell small {
+  display: block;
+  white-space: nowrap;
+}
+
+.check-time-cell small {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 .monitor-company-name {
@@ -1335,6 +1560,39 @@ details.config-panel > summary::-webkit-details-marker {
 
 .ai-analysis-panel {
   gap: 10px;
+}
+
+.ai-regenerate-form {
+  align-items: end;
+  display: grid;
+  gap: 6px 8px;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  max-width: 420px;
+}
+
+.ai-key-field {
+  display: grid;
+  gap: 4px;
+}
+
+.ai-key-field span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.ai-key-field input {
+  background: #ffffff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 34px;
+  padding: 7px 9px;
+}
+
+.ai-regenerate-form p {
+  color: var(--muted);
+  font-size: 11px;
+  grid-column: 1 / -1;
+  margin: 0;
 }
 
 .ai-analysis-textarea {
@@ -1627,7 +1885,7 @@ details.config-panel > summary::-webkit-details-marker {
 }
 
 .discovered-table {
-  min-width: 1240px;
+  min-width: 1160px;
   table-layout: fixed;
 }
 
@@ -1662,12 +1920,22 @@ details.config-panel > summary::-webkit-details-marker {
 
 .discovered-table th:nth-child(6),
 .discovered-table td:nth-child(6) {
-  width: 280px;
+  width: 232px;
 }
 
 .discovered-table th:last-child,
 .discovered-table td:last-child {
+  background: var(--panel);
+  box-shadow: -10px 0 18px rgba(20, 48, 41, 0.06);
+  position: sticky;
+  right: 0;
   width: 238px;
+  z-index: 1;
+}
+
+.discovered-table th:last-child {
+  background: #f8fbf9;
+  z-index: 2;
 }
 
 .source-cell,

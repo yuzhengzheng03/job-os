@@ -282,7 +282,26 @@ function getRecruitingEntryStatus(company: { careerUrl: string | null; websiteUr
 
 function getLastCheckedAt(value: unknown) {
   const config = getMonitorConfig(value);
-  return typeof config.lastCheckedAt === "string" ? new Date(config.lastCheckedAt).toLocaleString() : "-";
+  if (typeof config.lastCheckedAt !== "string") {
+    return null;
+  }
+
+  const date = new Date(config.lastCheckedAt);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  const datePart = [date.getFullYear(), String(date.getMonth() + 1).padStart(2, "0"), String(date.getDate()).padStart(2, "0")].join("-");
+  const timePart = [
+    String(date.getHours()).padStart(2, "0"),
+    String(date.getMinutes()).padStart(2, "0"),
+    String(date.getSeconds()).padStart(2, "0")
+  ].join(":");
+
+  return {
+    date: datePart,
+    time: timePart
+  };
 }
 
 function isCompanyStatus(value?: string) {
@@ -513,7 +532,11 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
               </tr>
             </thead>
             <tbody>
-              {companies.map((company) => (
+              {companies.map((company) => {
+                const recruitingEntryStatus = getRecruitingEntryStatus(company);
+                const lastCheckedAt = getLastCheckedAt(company.monitorConfig);
+
+                return (
                 <tr key={company.id}>
                   <td className="monitor-company-name">
                     <strong>{company.name}</strong>
@@ -524,8 +547,19 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
                   <td>
                     <PrioritySelectForm companyId={company.id} priority={company.priority} />
                   </td>
-                  <td>{getRecruitingEntryStatus(company)}</td>
-                  <td>{getLastCheckedAt(company.monitorConfig)}</td>
+                  <td className="entry-status-cell">
+                    <span className={`entry-status ${recruitingEntryStatus === "无法访问" ? "entry-status-failed" : ""}`}>{recruitingEntryStatus}</span>
+                  </td>
+                  <td className="check-time-cell">
+                    {lastCheckedAt ? (
+                      <>
+                        <span>{lastCheckedAt.date}</span>
+                        <small>{lastCheckedAt.time}</small>
+                      </>
+                    ) : (
+                      "-"
+                    )}
+                  </td>
                   <td>
                     <form action={updateCompanyRecruitingUrl} className="inline-url-form">
                       <input name="companyId" type="hidden" value={company.id} />
@@ -566,7 +600,8 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
                     </div>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}

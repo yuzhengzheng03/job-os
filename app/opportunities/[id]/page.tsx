@@ -177,9 +177,10 @@ async function regenerateAnalysis(formData: FormData) {
   "use server";
 
   const opportunityId = getText(formData, "opportunityId");
+  const openAIApiKey = getText(formData, "openaiApiKey");
   if (!opportunityId) return;
 
-  await analysisService.analyze(opportunityId);
+  await analysisService.analyze(opportunityId, { openAIApiKey });
   revalidatePath(`/opportunities/${opportunityId}`);
   revalidatePath("/opportunities");
 }
@@ -458,7 +459,7 @@ export default async function OpportunityPage({ params }: OpportunityPageProps) 
           <section className="detail-panel ai-analysis-panel">
             <div className="detail-panel-head">
               <h2>AI 岗位解读</h2>
-              <form action={regenerateAnalysis}>
+              <form action={regenerateAnalysis} className="ai-regenerate-form">
                 <input name="opportunityId" type="hidden" value={opportunity.id} />
                 <button className="button secondary" type="submit">
                   重新生成

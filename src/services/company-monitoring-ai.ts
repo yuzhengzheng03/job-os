@@ -1,4 +1,6 @@
 import type { SearchProfile } from "@prisma/client";
+import { getConfiguredAIConfig } from "@/src/lib/ai-config";
+import { requestAIJson } from "@/src/services/ai-json-chat";
 
 export type CompanyMonitorCandidate = {
   name: string;
@@ -158,9 +160,9 @@ export async function generateCompanyMonitorCandidates(profile: SearchProfile): 
   rawOutput: unknown;
 }> {
   const fallback = buildLocalCandidates(profile);
-  const apiKey = process.env.OPENAI_API_KEY;
+  const aiConfig = await getConfiguredAIConfig();
 
-  if (!apiKey) {
+  if (!aiConfig.apiKey) {
     return {
       candidates: fallback,
       model: "local-company-candidates-v0",
@@ -168,69 +170,38 @@ export async function generateCompanyMonitorCandidates(profile: SearchProfile): 
     };
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
-  const baseUrl = process.env.OPENAI_BASE_URL || "https://api.openai.com/v1";
-
   try {
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content: [
-              "你是 Job OS 的公司监控助手。",
-              "根据用户的监控策略，建议值得加入监控的公司。",
-              "输出候选公司，不要直接替用户确认监控。",
-              "只返回合法 JSON，不要输出 Markdown。"
-            ].join("\n")
-          },
-          {
-            role: "user",
-            content: JSON.stringify({
-              strategy: getStrategyProfileText(profile),
-              outputSchema: {
-                candidates: [
-                  {
-                    name: "string，公司名称",
-                    websiteUrl: "string，可选，公司官网",
-                    careerUrl: "string，可选，招聘入口",
-                    tags: "string[]，领域/城市/方向标签",
-                    priority: "number，0-3，3 最高",
-                    reason: "string，为什么建议监控"
-                  }
-                ]
-              }
-            })
-          }
-        ]
-      })
+    const result = await requestAIJson({
+      system: [
+        "你是 Job OS 的公司监控助手。",
+        "根据用户的监控策略，建议值得加入监控的公司。",
+        "输出候选公司，不要直接替用户确认监控。",
+        "只返回合法 JSON，不要输出 Markdown。"
+      ].join("\n"),
+      user: {
+        strategy: getStrategyProfileText(profile),
+        outputSchema: {
+          candidates: [
+            {
+              name: "string，公司名称",
+              websiteUrl: "string，可选，公司官网",
+              careerUrl: "string，可选，招聘入口",
+              tags: "string[]，领域/城市/方向标签",
+              priority: "number，0-3，3 最高",
+              reason: "string，为什么建议监控"
+            }
+          ]
+        }
+      }
     });
 
-    if (!response.ok) {
-      throw new Error(await response.text());
-    }
-
-    const rawOutput = await response.json();
-    const content = rawOutput?.choices?.[0]?.message?.content;
-
-    if (typeof content !== "string") {
-      throw new Error("OpenAI response did not include text content.");
-    }
-
-    const parsed = JSON.parse(content) as { candidates?: unknown[] };
+    const parsed = result.parsed as { candidates?: unknown[] };
     const candidates = Array.isArray(parsed.candidates) ? parsed.candidates.map(normalizeCandidate).filter(Boolean) : [];
 
     return {
       candidates: candidates.length ? (candidates as CompanyMonitorCandidate[]) : fallback,
-      model,
-      rawOutput
+      model: result.model,
+      rawOutput: result.rawOutput
     };
   } catch {
     return {
