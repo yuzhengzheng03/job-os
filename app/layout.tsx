@@ -20,10 +20,20 @@ async function saveAIConfig(formData: FormData) {
   const intent = String(formData.get("intent") || "save");
   const cookieStore = await cookies();
 
-  if (intent === "clear" || !apiKey) {
+  if (intent === "clear") {
     cookieStore.delete(openAIKeyCookieName);
     cookieStore.delete(aiProviderCookieName);
     cookieStore.delete(aiModelCookieName);
+    return;
+  }
+
+  const savedProviderValue = cookieStore.get(aiProviderCookieName)?.value ?? "";
+  const savedProvider = isAIProvider(savedProviderValue) ? savedProviderValue : "openai";
+
+  // A blank password field means “keep the saved key”, not “clear it”.
+  // Switching providers still requires a new key so an OpenAI key is never
+  // accidentally sent to another provider.
+  if (!apiKey && provider !== savedProvider) {
     return;
   }
 
@@ -45,20 +55,27 @@ async function saveAIConfig(formData: FormData) {
     cookieStore.delete(aiModelCookieName);
   }
 
-  cookieStore.set(openAIKeyCookieName, apiKey, {
-    httpOnly: true,
-    maxAge: 60 * 60 * 24 * 180,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
-  });
+  if (apiKey) {
+    cookieStore.set(openAIKeyCookieName, apiKey, {
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 180,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production"
+    });
+  }
 }
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const cookieStore = await cookies();
   const cookieProvider = cookieStore.get(aiProviderCookieName)?.value ?? "";
   const activeProvider = isAIProvider(cookieProvider) ? cookieProvider : "openai";
-  const activeModel = cookieStore.get(aiModelCookieName)?.value || process.env.OPENAI_MODEL || getProviderDefaults(activeProvider).model;
-  const hasOpenAIKey = Boolean(cookieStore.get(openAIKeyCookieName)?.value || process.env.OPENAI_API_KEY);
+  const activeModel =
+    cookieStore.get(aiModelCookieName)?.value ||
+    (activeProvider === "openai" ? process.env.OPENAI_MODEL : undefined) ||
+    getProviderDefaults(activeProvider).model;
+  const hasOpenAIKey = Boolean(
+    cookieStore.get(openAIKeyCookieName)?.value || (activeProvider === "openai" && process.env.OPENAI_API_KEY)
+  );
 
   return (
     <html lang="en">

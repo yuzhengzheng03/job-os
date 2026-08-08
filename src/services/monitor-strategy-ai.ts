@@ -91,6 +91,8 @@ export async function generateMonitorStrategyDraft(description: string): Promise
   draft: MonitorStrategyDraft;
   model: string;
   rawOutput: unknown;
+  status: "AI" | "NOT_CONFIGURED" | "FAILED";
+  error?: string;
 }> {
   const fallback = buildLocalStrategyDraft(description);
   const aiConfig = await getConfiguredAIConfig();
@@ -98,8 +100,10 @@ export async function generateMonitorStrategyDraft(description: string): Promise
   if (!aiConfig.apiKey) {
     return {
       draft: fallback,
-      model: "local-rule-strategy-v0",
-      rawOutput: fallback
+      model: "not-configured",
+      rawOutput: null,
+      status: "NOT_CONFIGURED",
+      error: "请先配置 AI API Key。"
     };
   }
 
@@ -132,13 +136,16 @@ export async function generateMonitorStrategyDraft(description: string): Promise
     return {
       draft: normalizeStrategyDraft(result.parsed, fallback),
       model: result.model,
-      rawOutput: result.rawOutput
+      rawOutput: result.rawOutput,
+      status: "AI"
     };
-  } catch {
+  } catch (error) {
     return {
       draft: fallback,
-      model: "local-rule-strategy-v0",
-      rawOutput: fallback
+      model: aiConfig.model,
+      rawOutput: null,
+      status: "FAILED",
+      error: error instanceof Error ? error.message : "AI 求职策略生成失败。"
     };
   }
 }

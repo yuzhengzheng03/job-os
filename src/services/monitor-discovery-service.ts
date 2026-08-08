@@ -8,50 +8,9 @@ function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
 }
 
-function inferRole(tags: unknown) {
-  const tagText = asStringArray(tags).join(" ");
-
-  if (/临床|应用/.test(tagText)) {
-    return "临床应用专员";
-  }
-
-  if (/质量|法规/.test(tagText)) {
-    return "质量法规专员";
-  }
-
-  if (/研发|工程/.test(tagText)) {
-    return "研发工程师";
-  }
-
-  return "产品经理";
-}
-
 function inferLocation(tags: unknown) {
   const cities = ["北京", "上海", "深圳", "广州", "杭州", "苏州", "南京", "成都", "武汉", "西安"];
   return cities.find((city) => asStringArray(tags).some((tag) => tag.includes(city))) ?? "上海";
-}
-
-async function getMonitorSource() {
-  return prisma.source.upsert({
-    where: {
-      type_name: {
-        type: sourceTypes.OTHER,
-        name: "公司监控发现"
-      }
-    },
-    update: {},
-    create: {
-      name: "公司监控发现",
-      type: sourceTypes.OTHER,
-      adapterKey: "company-monitor",
-      searchCapabilities: {
-        mode: "company-watch"
-      },
-      updateStrategy: {
-        trigger: "manual-sync"
-      }
-    }
-  });
 }
 
 async function getRealCareerSource() {
@@ -125,6 +84,8 @@ export class MonitorDiscoveryService {
       take: 10
     });
     const results = [];
+    let checkedCompanyCount = 0;
+    let aiFailureCount = 0;
 
     for (const company of companies) {
       const url = company.careerUrl ?? company.websiteUrl;
@@ -134,6 +95,7 @@ export class MonitorDiscoveryService {
       }
 
       try {
+        checkedCompanyCount += 1;
         const response = await fetch(url, {
           headers: {
             "User-Agent": "Job OS career monitor"
@@ -157,6 +119,18 @@ export class MonitorDiscoveryService {
           pageText: rawText,
           fallbackLocation: inferLocation(company.tags)
         });
+
+        if (extraction.status !== "AI") {
+          aiFailureCount += 1;
+          await updateCompanyCheckState(
+            company.id,
+            company.monitorConfig,
+            "FAILED",
+            new Date(),
+            extraction.error ?? "AI 招聘页抽取失败"
+          );
+          continue;
+        }
 
         for (const job of extraction.jobs.slice(0, 5)) {
           const sourceJob = await sourceJobService.create({
@@ -194,60 +168,7 @@ export class MonitorDiscoveryService {
       }
     }
 
-    return results;
-  }
-
-  async syncDemoJobs(userId: string) {
-    const source = await getMonitorSource();
-    const companies = await prisma.company.findMany({
-      where: {
-        userId,
-        status: "MONITORING"
-      },
-      orderBy: [{ priority: "desc" }, { updatedAt: "desc" }],
-      take: 5
-    });
-
-    const today = new Date().toISOString().slice(0, 10);
-    const results = [];
-
-    for (const company of companies) {
-      const role = inferRole(company.tags);
-      const location = inferLocation(company.tags);
-      const title = `${role} - 2026 秋招`;
-      const url = `${company.careerUrl ?? company.websiteUrl ?? "https://example.com/careers"}#job-os-${company.id}-${today}`;
-      const rawText = [
-        title,
-        `公司：${company.name}`,
-        `工作地点：${location}`,
-        "岗位来源：公司监控发现",
-        `发布时间：${today}`,
-        `JD 原文：负责${role}相关的信息收集、需求分析、跨团队协作和项目推进。`,
-        "岗位要求：具备良好的沟通能力、结构化分析能力和学习能力；相关专业或项目经历优先。",
-        "说明：这是当前监控流程生成的演示发现记录，真实抓取接入后会替换为招聘官网原文或截图。"
-      ].join("\n");
-
-      const sourceJob = await sourceJobService.create({
-        sourceId: source.id,
-        url,
-        rawText,
-        externalId: `company-monitor:${company.id}:${today}:${title}`,
-        publishedAt: new Date()
-      });
-
-      const opportunity = await opportunityMergeService.mergeOrCreate({
-        userId,
-        sourceJobId: sourceJob.id,
-        companyName: company.name,
-        title,
-        location,
-        recruitmentType: "秋招"
-      });
-
-      results.push({ sourceJob, opportunity });
-    }
-
-    return results;
+    return { results, checkedCompanyCount, aiFailureCount };
   }
 }
 

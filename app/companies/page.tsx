@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { companyStatuses } from "@/src/domain/domain-values";
 import { getCompanyStatusLabel } from "@/src/domain/display-labels";
@@ -9,6 +10,7 @@ import { TagsInputForm } from "@/app/companies/tags-input-form";
 import { generateCompanyMonitorCandidates, type CompanyMonitorCandidate } from "@/src/services/company-monitoring-ai";
 import { monitorDiscoveryService } from "@/src/services/monitor-discovery-service";
 import { parseCompanyCandidatesFromXlsx } from "@/src/services/xlsx-company-import";
+import { getConfiguredAIConfig } from "@/src/lib/ai-config";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,12 @@ type CompaniesPageProps = {
     status?: string;
     q?: string;
     priority?: string;
+    generation?: string;
+    count?: string;
+    model?: string;
+    check?: string;
+    found?: string;
+    checked?: string;
   }>;
 };
 
@@ -98,7 +106,15 @@ async function generateCandidatesFromStrategy(formData: FormData) {
     return;
   }
 
-  const { candidates, model, rawOutput } = await generateCompanyMonitorCandidates(strategy);
+  const { candidates, model, rawOutput, status } = await generateCompanyMonitorCandidates(strategy);
+
+  if (status === "NOT_CONFIGURED") {
+    redirect("/companies?generation=not-configured");
+  }
+
+  if (status === "FAILED") {
+    redirect("/companies?generation=failed");
+  }
 
   await Promise.all(
     candidates.map((candidate) =>
@@ -113,6 +129,7 @@ async function generateCandidatesFromStrategy(formData: FormData) {
   );
 
   revalidatePath("/companies");
+  redirect(`/companies?generation=success&count=${candidates.length}&model=${encodeURIComponent(model)}`);
 }
 
 async function importCandidateCompanies(formData: FormData) {
@@ -233,21 +250,25 @@ async function updateCompanyRecruitingUrl(formData: FormData) {
 async function syncMonitorJobs() {
   "use server";
 
+  const aiConfig = await getConfiguredAIConfig();
+  if (!aiConfig.apiKey) {
+    redirect("/companies?check=not-configured");
+  }
+
   const user = await prisma.user.findFirst({ orderBy: { createdAt: "asc" } });
 
   if (!user) {
     return;
   }
 
-  const results = await monitorDiscoveryService.syncRealCareerPages(user.id);
-
-  if (results.length === 0) {
-    await monitorDiscoveryService.syncDemoJobs(user.id);
-  }
+  const { results, checkedCompanyCount, aiFailureCount } = await monitorDiscoveryService.syncRealCareerPages(user.id);
 
   revalidatePath("/companies");
   revalidatePath("/discovered");
   revalidatePath("/opportunities");
+
+  const checkStatus = aiFailureCount > 0 ? "partial" : results.length > 0 ? "success" : "no-results";
+  redirect(`/companies?check=${checkStatus}&found=${results.length}&checked=${checkedCompanyCount}`);
 }
 
 function getMonitorReason(value: unknown): string {
@@ -345,7 +366,7 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
     );
   }
 
-  const { status, q, priority } = await searchParams;
+  const { status, q, priority, generation, count, model, check, found, checked } = await searchParams;
   const activeStatus = isCompanyStatus(status) ? status : undefined;
   const activeQuery = String(q ?? "").trim();
   const activePriority = priority && !Number.isNaN(Number(priority)) ? Number(priority) : undefined;
@@ -386,6 +407,32 @@ export default async function CompaniesPage({ searchParams }: CompaniesPageProps
           </form>
         </div>
       </header>
+
+      {generation === "not-configured" ? (
+        <div className="status-banner">尚未配置 AI。请先在左下角保存 API Key，再生成候选公司。</div>
+      ) : null}
+      {generation === "failed" ? (
+        <div className="status-banner">AI 候选公司生成失败，没有添加固定示例名单。请检查 AI 配置或补充求职范围后重试。</div>
+      ) : null}
+      {generation === "success" ? (
+        <div className="status-banner success">
+          已由 {model || "AI"} 生成并保存 {count || "0"} 家候选公司。
+        </div>
+      ) : null}
+      {check === "not-configured" ? (
+        <div className="status-banner">尚未配置 AI。请先保存 API Key，再检查招聘页。</div>
+      ) : null}
+      {check === "partial" ? (
+        <div className="status-banner">
+          已检查 {checked || "0"} 家企业并发现 {found || "0"} 个岗位，但部分招聘页抓取或 AI 抽取失败；系统没有生成演示岗位。
+        </div>
+      ) : null}
+      {check === "no-results" ? (
+        <div className="status-banner">已检查 {checked || "0"} 家企业，暂未发现可确认的真实岗位；系统没有生成演示岗位。</div>
+      ) : null}
+      {check === "success" ? (
+        <div className="status-banner success">已检查 {checked || "0"} 家企业，发现 {found || "0"} 个真实岗位。</div>
+      ) : null}
 
       <div className="monitor-summary">
         <div>

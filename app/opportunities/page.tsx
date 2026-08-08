@@ -477,6 +477,8 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                         const applicationInfo = getApplicationInfo(opportunity.applicationInfo);
                         const keyItem = getKeyItem(opportunity);
                         const aiReminder = getAiReminder(opportunity);
+                        const analysis = opportunity.jobAnalyses[0];
+                        const reminderLabel = analysis?.model && !analysis.model.startsWith("mock-") ? "AI 提醒" : "本地提醒";
 
                         return (
                           <article className="opportunity-card" key={opportunity.id}>
@@ -507,7 +509,7 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                             </div>
 
                             <div className="card-ai-reminder">
-                              <span>AI 提醒</span>
+                              <span>{reminderLabel}</span>
                               <p>{aiReminder}</p>
                             </div>
 
@@ -520,6 +522,17 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
                                   官网
                                 </a>
                               ) : null}
+                              <form action={quickUpdateOpportunityStatus}>
+                                <input name="opportunityId" type="hidden" value={opportunity.id} />
+                                <input
+                                  name="status"
+                                  type="hidden"
+                                  value={opportunity.status === opportunityStatuses.CLOSED ? opportunityStatuses.READY : opportunityStatuses.CLOSED}
+                                />
+                                <button className="button secondary" type="submit">
+                                  {opportunity.status === opportunityStatuses.CLOSED ? "重新打开" : "结束"}
+                                </button>
+                              </form>
                             </div>
                           </article>
                         );

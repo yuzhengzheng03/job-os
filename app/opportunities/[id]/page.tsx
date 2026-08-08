@@ -374,6 +374,7 @@ export default async function OpportunityPage({ params }: OpportunityPageProps) 
 
   const sourceJob = opportunity.opportunitySourceJobs[0]?.sourceJob;
   const analysis = opportunity.jobAnalyses[0];
+  const analysisHeading = analysis?.model && !analysis.model.startsWith("mock-") ? "AI 岗位解读" : "本地岗位解读";
   const applicationInfo = getApplicationInfo(opportunity.applicationInfo);
   const sourceLabel = getSourceDisplayLabel(sourceJob?.source.type, sourceJob?.source.name);
   const responsibilities = asStringArray(analysis?.responsibilities);
@@ -458,11 +459,11 @@ export default async function OpportunityPage({ params }: OpportunityPageProps) 
 
           <section className="detail-panel ai-analysis-panel">
             <div className="detail-panel-head">
-              <h2>AI 岗位解读</h2>
+              <h2>{analysisHeading}</h2>
               <form action={regenerateAnalysis} className="ai-regenerate-form">
                 <input name="opportunityId" type="hidden" value={opportunity.id} />
                 <button className="button secondary" type="submit">
-                  重新生成
+                  重新生成解读
                 </button>
               </form>
             </div>

@@ -34,12 +34,15 @@ export async function getConfiguredAIConfig(options: { apiKey?: string; model?: 
   const cookieProvider = cookieStore.get(aiProviderCookieName)?.value ?? "";
   const provider = options.provider || (isAIProvider(cookieProvider) ? cookieProvider : "openai");
   const defaults = getProviderDefaults(provider);
+  const environmentApiKey = provider === "openai" ? process.env.OPENAI_API_KEY : undefined;
+  const environmentModel = provider === "openai" ? process.env.OPENAI_MODEL : undefined;
+  const environmentBaseUrl = provider === "openai" ? process.env.OPENAI_BASE_URL : undefined;
 
   return {
     provider,
-    apiKey: options.apiKey?.trim() || cookieStore.get(openAIKeyCookieName)?.value?.trim() || process.env.OPENAI_API_KEY || "",
-    model: options.model?.trim() || cookieStore.get(aiModelCookieName)?.value?.trim() || process.env.OPENAI_MODEL || defaults.model,
-    baseUrl: options.baseUrl?.trim() || process.env.OPENAI_BASE_URL || defaults.baseUrl
+    apiKey: options.apiKey?.trim() || cookieStore.get(openAIKeyCookieName)?.value?.trim() || environmentApiKey || "",
+    model: options.model?.trim() || cookieStore.get(aiModelCookieName)?.value?.trim() || environmentModel || defaults.model,
+    baseUrl: options.baseUrl?.trim() || environmentBaseUrl || defaults.baseUrl
   };
 }
 

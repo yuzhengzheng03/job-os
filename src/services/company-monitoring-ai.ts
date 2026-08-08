@@ -32,104 +32,11 @@ function getStrategyProfileText(profile: SearchProfile) {
     educationRequirements: asStringArray(profile.educationRequirements),
     recruitmentTypes: asStringArray(profile.recruitmentTypes),
     roles: asStringArray(sourceScope.roles),
-    background: asStringArray(sourceScope.background)
+    background: asStringArray(sourceScope.background),
+    excludeKeywords: asStringArray(sourceScope.excludeKeywords),
+    strategyMode: typeof sourceScope.strategyMode === "string" ? sourceScope.strategyMode : undefined,
+    originalDescription: typeof sourceScope.originalDescription === "string" ? sourceScope.originalDescription : undefined
   };
-}
-
-function buildLocalCandidates(profile: SearchProfile): CompanyMonitorCandidate[] {
-  const strategy = getStrategyProfileText(profile);
-  const text = [
-    strategy.name,
-    ...strategy.keywords,
-    ...strategy.industries,
-    ...strategy.roles,
-    ...strategy.background
-  ].join(" ");
-
-  if (text.includes("生物医学") || text.includes("医疗器械") || text.includes("医疗")) {
-    return [
-      {
-        name: "Medtronic 美敦力",
-        websiteUrl: "https://www.medtronic.com",
-        careerUrl: "https://www.medtronic.com/us-en/about/careers.html",
-        tags: uniq(["医疗器械", "生物医学工程", ...strategy.locations]),
-        priority: 3,
-        reason: "大型医疗器械公司，适合监控产品、临床应用、研发和质量法规方向。"
-      },
-      {
-        name: "Johnson & Johnson MedTech 强生医疗科技",
-        websiteUrl: "https://www.jnjmedtech.com",
-        careerUrl: "https://www.careers.jnj.com",
-        tags: uniq(["医疗器械", "校招", ...strategy.locations]),
-        priority: 3,
-        reason: "医疗科技业务覆盖广，适合持续跟踪校招和产品相关岗位。"
-      },
-      {
-        name: "Boston Scientific 波士顿科学",
-        websiteUrl: "https://www.bostonscientific.com",
-        careerUrl: "https://jobs.bostonscientific.com",
-        tags: uniq(["医疗器械", "临床应用", ...strategy.locations]),
-        priority: 2,
-        reason: "介入和医疗设备方向岗位较多，可作为医疗器械岗位监控池。"
-      },
-      {
-        name: "Mindray 迈瑞医疗",
-        websiteUrl: "https://www.mindray.com",
-        careerUrl: "https://www.mindray.com/cn/about-us/careers",
-        tags: uniq(["医疗器械", "国产龙头", ...strategy.locations]),
-        priority: 3,
-        reason: "国内医疗器械龙头，适合监控产品、研发、临床和市场方向。"
-      }
-    ];
-  }
-
-  if (text.includes("AI") || text.includes("大模型") || text.includes("LLM") || text.includes("Agent")) {
-    return [
-      {
-        name: "字节跳动",
-        websiteUrl: "https://www.bytedance.com",
-        careerUrl: "https://jobs.bytedance.com",
-        tags: uniq(["AI", "产品", ...strategy.locations]),
-        priority: 3,
-        reason: "AI 产品和平台方向岗位密集，适合做高频监控。"
-      },
-      {
-        name: "阿里巴巴",
-        websiteUrl: "https://www.alibaba.com",
-        careerUrl: "https://talent.alibaba.com",
-        tags: uniq(["AI", "产品", ...strategy.locations]),
-        priority: 2,
-        reason: "覆盖云、AI、企业服务和平台产品，可监控产品经理相关岗位。"
-      },
-      {
-        name: "百度",
-        websiteUrl: "https://www.baidu.com",
-        careerUrl: "https://talent.baidu.com",
-        tags: uniq(["AI", "大模型", ...strategy.locations]),
-        priority: 2,
-        reason: "AI 和大模型业务明确，适合关注 AI 产品、算法和平台岗位。"
-      }
-    ];
-  }
-
-  return [
-    {
-      name: "腾讯",
-      websiteUrl: "https://www.tencent.com",
-      careerUrl: "https://careers.tencent.com",
-      tags: uniq(["产品", ...strategy.locations]),
-      priority: 2,
-      reason: "综合型互联网公司，适合作为产品经理岗位的基础监控对象。"
-    },
-    {
-      name: "美团",
-      websiteUrl: "https://www.meituan.com",
-      careerUrl: "https://zhaopin.meituan.com",
-      tags: uniq(["产品", "校招", ...strategy.locations]),
-      priority: 2,
-      reason: "业务场景丰富，产品岗位稳定出现，适合持续监控。"
-    }
-  ];
 }
 
 function normalizeCandidate(value: unknown): CompanyMonitorCandidate | null {
@@ -158,15 +65,18 @@ export async function generateCompanyMonitorCandidates(profile: SearchProfile): 
   candidates: CompanyMonitorCandidate[];
   model: string;
   rawOutput: unknown;
+  status: "AI" | "NOT_CONFIGURED" | "FAILED";
+  error?: string;
 }> {
-  const fallback = buildLocalCandidates(profile);
   const aiConfig = await getConfiguredAIConfig();
 
   if (!aiConfig.apiKey) {
     return {
-      candidates: fallback,
-      model: "local-company-candidates-v0",
-      rawOutput: fallback
+      candidates: [],
+      model: "not-configured",
+      rawOutput: null,
+      status: "NOT_CONFIGURED",
+      error: "请先在左下角的 AI 能力配置中保存 API Key。"
     };
   }
 
@@ -174,7 +84,11 @@ export async function generateCompanyMonitorCandidates(profile: SearchProfile): 
     const result = await requestAIJson({
       system: [
         "你是 Job OS 的公司监控助手。",
-        "根据用户的监控策略，建议值得加入监控的公司。",
+        "根据用户的完整监控策略，建议 8 到 12 家值得加入监控的公司。",
+        "候选公司必须同时考虑岗位方向、行业背景、招聘类型和城市，不要只命中其中一个关键词。",
+        "优先给出与用户专业背景和目标岗位有直接交集的公司，并兼顾外企、国内企业和不同规模公司。",
+        "reason 必须分别说明行业相关性、岗位相关性和招聘类型相关性。",
+        "不知道准确官网或招聘入口时留空，不要编造 URL，也不要声称公司当前正在招聘。",
         "输出候选公司，不要直接替用户确认监控。",
         "只返回合法 JSON，不要输出 Markdown。"
       ].join("\n"),
@@ -198,16 +112,29 @@ export async function generateCompanyMonitorCandidates(profile: SearchProfile): 
     const parsed = result.parsed as { candidates?: unknown[] };
     const candidates = Array.isArray(parsed.candidates) ? parsed.candidates.map(normalizeCandidate).filter(Boolean) : [];
 
+    if (!candidates.length) {
+      return {
+        candidates: [],
+        model: result.model,
+        rawOutput: result.rawOutput,
+        status: "FAILED",
+        error: "AI 没有返回有效的候选公司，请补充城市、岗位方向或行业偏好后重试。"
+      };
+    }
+
     return {
-      candidates: candidates.length ? (candidates as CompanyMonitorCandidate[]) : fallback,
+      candidates: candidates as CompanyMonitorCandidate[],
       model: result.model,
-      rawOutput: result.rawOutput
+      rawOutput: result.rawOutput,
+      status: "AI"
     };
-  } catch {
+  } catch (error) {
     return {
-      candidates: fallback,
-      model: "local-company-candidates-v0",
-      rawOutput: fallback
+      candidates: [],
+      model: aiConfig.model,
+      rawOutput: null,
+      status: "FAILED",
+      error: error instanceof Error ? error.message : "AI 候选公司生成失败。"
     };
   }
 }

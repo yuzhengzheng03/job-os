@@ -44,40 +44,22 @@ function normalizeExtractedJobs(value: unknown, fallbackLocation?: string): Extr
   return normalized.slice(0, 12);
 }
 
-function localExtractJobs(input: ExtractJobsInput): ExtractedJob[] {
-  const keywords = /(岗位|职位|招聘|校招|实习|产品|经理|工程师|算法|研发|质量|法规|临床|应用|管培|暑期|秋招|intern|engineer|manager|associate|scientist|specialist)/i;
-  const lines = input.pageText
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length >= 4 && line.length <= 140);
-  const matched = lines.filter((line) => keywords.test(line) && !line.includes("隐私") && !line.includes("Cookie"));
-  const uniqueTitles = Array.from(new Set(matched)).slice(0, 8);
-
-  return uniqueTitles.map((title) => {
-    const start = Math.max(0, lines.indexOf(title) - 2);
-    const block = lines.slice(start, start + 8).join("\n");
-
-    return {
-      title,
-      location: input.fallbackLocation,
-      rawText: [`${title}`, `公司：${input.companyName}`, "岗位来源：招聘页抽取", block].join("\n")
-    };
-  });
-}
-
 export async function extractJobsFromCareerText(input: ExtractJobsInput): Promise<{
   jobs: ExtractedJob[];
   model: string;
   rawOutput: unknown;
+  status: "AI" | "NOT_CONFIGURED" | "FAILED";
+  error?: string;
 }> {
-  const fallback = localExtractJobs(input);
   const aiConfig = await getConfiguredAIConfig();
 
   if (!aiConfig.apiKey) {
     return {
-      jobs: fallback,
-      model: "local-career-extraction-v0",
-      rawOutput: fallback
+      jobs: [],
+      model: "not-configured",
+      rawOutput: null,
+      status: "NOT_CONFIGURED",
+      error: "请先配置 AI API Key。"
     };
   }
 
@@ -112,15 +94,18 @@ export async function extractJobsFromCareerText(input: ExtractJobsInput): Promis
     const jobs = normalizeExtractedJobs(result.parsed, input.fallbackLocation);
 
     return {
-      jobs: jobs.length ? jobs : fallback,
+      jobs,
       model: result.model,
-      rawOutput: result.rawOutput
+      rawOutput: result.rawOutput,
+      status: "AI"
     };
-  } catch {
+  } catch (error) {
     return {
-      jobs: fallback,
-      model: "local-career-extraction-v0",
-      rawOutput: fallback
+      jobs: [],
+      model: aiConfig.model,
+      rawOutput: null,
+      status: "FAILED",
+      error: error instanceof Error ? error.message : "AI 招聘页抽取失败。"
     };
   }
 }

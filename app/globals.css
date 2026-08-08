@@ -33,6 +33,21 @@ a {
   text-decoration: none;
 }
 
+.status-banner {
+  background: #fff8e8;
+  border: 1px solid #eed49d;
+  border-radius: 8px;
+  color: #80530d;
+  margin-bottom: 16px;
+  padding: 11px 14px;
+}
+
+.status-banner.success {
+  background: #eaf7f1;
+  border-color: #b8dece;
+  color: #076452;
+}
+
 button,
 input,
 select,
@@ -53,7 +68,11 @@ textarea {
   display: flex;
   flex-direction: column;
   padding: 22px 16px;
-  position: relative;
+  align-self: start;
+  height: 100vh;
+  overflow-y: auto;
+  position: sticky;
+  top: 0;
 }
 
 .brand {
@@ -679,6 +698,15 @@ textarea {
   font-size: 13px;
   min-height: 32px;
   white-space: nowrap;
+}
+
+.card-actions > form {
+  display: flex;
+  flex: 1 1 0;
+}
+
+.card-actions > form .button {
+  width: 100%;
 }
 
 .strategy-composer {
@@ -2197,6 +2225,9 @@ details.config-panel > summary::-webkit-details-marker {
   .sidebar {
     border-bottom: 1px solid var(--line);
     border-right: 0;
+    height: auto;
+    overflow-y: visible;
+    position: relative;
   }
 
   .grid {

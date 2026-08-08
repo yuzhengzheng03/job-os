@@ -1,9 +1,18 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
 import { generateMonitorStrategyDraft } from "@/src/services/monitor-strategy-ai";
 import { prisma } from "@/src/lib/prisma";
 
 export const dynamic = "force-dynamic";
+
+type SearchProfilesPageProps = {
+  searchParams: Promise<{
+    saved?: string;
+    generation?: string;
+    model?: string;
+  }>;
+};
 
 type StrategyMeta = {
   strategyMode?: string;
@@ -78,7 +87,15 @@ async function createMonitorStrategy(formData: FormData) {
     return;
   }
 
-  const { draft, model, rawOutput } = await generateMonitorStrategyDraft(description);
+  const { draft, model, rawOutput, status } = await generateMonitorStrategyDraft(description);
+
+  if (status === "NOT_CONFIGURED") {
+    redirect("/search-profiles?generation=not-configured");
+  }
+
+  if (status === "FAILED") {
+    redirect("/search-profiles?generation=failed");
+  }
 
   await prisma.searchProfile.create({
     data: {
@@ -103,6 +120,7 @@ async function createMonitorStrategy(formData: FormData) {
   });
 
   revalidatePath("/search-profiles");
+  redirect(`/search-profiles?generation=success&model=${encodeURIComponent(model)}`);
 }
 
 async function updateMonitorStrategy(formData: FormData) {
@@ -147,6 +165,7 @@ async function updateMonitorStrategy(formData: FormData) {
 
   revalidatePath("/search-profiles");
   revalidatePath("/companies");
+  redirect("/search-profiles?saved=1");
 }
 
 async function removeMonitorStrategy(formData: FormData) {
@@ -163,7 +182,7 @@ async function removeMonitorStrategy(formData: FormData) {
   revalidatePath("/companies");
 }
 
-export default async function SearchProfilesPage() {
+export default async function SearchProfilesPage({ searchParams }: SearchProfilesPageProps) {
   if (!process.env.DATABASE_URL) {
     return (
       <>
@@ -181,6 +200,7 @@ export default async function SearchProfilesPage() {
   }
 
   const profiles = await prisma.searchProfile.findMany({ orderBy: { updatedAt: "desc" } }).catch(() => []);
+  const { saved, generation, model } = await searchParams;
 
   return (
     <>
@@ -189,6 +209,17 @@ export default async function SearchProfilesPage() {
           <h1>划定求职范围</h1>
         </div>
       </header>
+
+      {saved === "1" ? <div className="status-banner success">求职范围已保存。</div> : null}
+      {generation === "not-configured" ? (
+        <div className="status-banner">尚未配置 AI。请先在左下角保存 API Key，再生成求职策略。</div>
+      ) : null}
+      {generation === "failed" ? (
+        <div className="status-banner">AI 求职策略生成失败，本次没有创建本地规则冒充 AI 结果。</div>
+      ) : null}
+      {generation === "success" ? (
+        <div className="status-banner success">已使用 {model || "AI"} 生成求职策略。</div>
+      ) : null}
 
       <form action={createMonitorStrategy} className="strategy-composer">
         <label htmlFor="description">求职方向描述</label>
@@ -235,7 +266,7 @@ export default async function SearchProfilesPage() {
                   </div>
                   <div className="strategy-actions">
                     <button className="button secondary" type="submit">
-                      修改
+                      保存修改
                     </button>
                     <button className="button ghost-danger" formAction={removeMonitorStrategy} type="submit">
                       移除
