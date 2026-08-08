@@ -29,7 +29,8 @@ async function requestOpenAICompatibleJson(config: Awaited<ReturnType<typeof get
         { role: "system", content: system },
         { role: "user", content: JSON.stringify(user) }
       ]
-    })
+    }),
+    signal: AbortSignal.timeout(20_000)
   });
 
   if (!response.ok) {
@@ -64,7 +65,8 @@ async function requestClaudeJson(config: Awaited<ReturnType<typeof getConfigured
           content: JSON.stringify(user)
         }
       ]
-    })
+    }),
+    signal: AbortSignal.timeout(20_000)
   });
 
   if (!response.ok) {

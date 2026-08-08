@@ -1,32 +1,51 @@
 import { cookies } from "next/headers";
+import {
+  getProviderDefaults,
+  isAIProvider,
+  normalizeAIModel,
+  type AIProvider
+} from "@/src/lib/ai-provider-options";
+
+export {
+  getProviderDefaults,
+  isAIProvider,
+  isSupportedAIModel,
+  normalizeAIModel,
+  providerModels,
+  type AIProvider
+} from "@/src/lib/ai-provider-options";
 
 export const openAIKeyCookieName = "job_os_openai_api_key";
 export const aiProviderCookieName = "job_os_ai_provider";
 export const aiModelCookieName = "job_os_ai_model";
+export const aiVerifiedCookieName = "job_os_ai_verified";
 
-export type AIProvider = "openai" | "claude" | "deepseek";
-
-const providerDefaults: Record<AIProvider, { baseUrl: string; model: string }> = {
-  openai: {
-    baseUrl: "https://api.openai.com/v1",
-    model: "gpt-4.1-mini"
-  },
-  claude: {
-    baseUrl: "https://api.anthropic.com/v1",
-    model: "claude-3-5-sonnet-latest"
-  },
-  deepseek: {
-    baseUrl: "https://api.deepseek.com/v1",
-    model: "deepseek-chat"
-  }
+export type AIVerification = {
+  provider: AIProvider;
+  model: string;
+  verifiedAt: string;
 };
 
-export function isAIProvider(value: string): value is AIProvider {
-  return value === "openai" || value === "claude" || value === "deepseek";
-}
+export function parseAIVerification(value?: string): AIVerification | null {
+  if (!value) {
+    return null;
+  }
 
-export function getProviderDefaults(provider: AIProvider) {
-  return providerDefaults[provider];
+  try {
+    const parsed = JSON.parse(value) as Partial<AIVerification>;
+    if (
+      !parsed.provider ||
+      !isAIProvider(parsed.provider) ||
+      !parsed.model ||
+      !parsed.verifiedAt ||
+      Number.isNaN(Date.parse(parsed.verifiedAt))
+    ) {
+      return null;
+    }
+    return { provider: parsed.provider, model: parsed.model, verifiedAt: parsed.verifiedAt };
+  } catch {
+    return null;
+  }
 }
 
 export async function getConfiguredAIConfig(options: { apiKey?: string; model?: string; provider?: AIProvider; baseUrl?: string } = {}) {
@@ -41,7 +60,10 @@ export async function getConfiguredAIConfig(options: { apiKey?: string; model?: 
   return {
     provider,
     apiKey: options.apiKey?.trim() || cookieStore.get(openAIKeyCookieName)?.value?.trim() || environmentApiKey || "",
-    model: options.model?.trim() || cookieStore.get(aiModelCookieName)?.value?.trim() || environmentModel || defaults.model,
+    model: normalizeAIModel(
+      provider,
+      options.model?.trim() || cookieStore.get(aiModelCookieName)?.value?.trim() || environmentModel || defaults.model
+    ),
     baseUrl: options.baseUrl?.trim() || environmentBaseUrl || defaults.baseUrl
   };
 }
